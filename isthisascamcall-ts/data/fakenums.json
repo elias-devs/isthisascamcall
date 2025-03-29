@@ -1,0 +1,14 @@
+{
+  "number": "8331234567",
+  "risk_score": 0.85,
+  "reports": [
+    {
+      "description": "They said they were from Amazon and I needed to verify my purchase.",
+      "scam_type": "Amazon Refund Scam"
+    },
+    {
+      "description": "Robocall claiming to be the IRS.",
+      "scam_type": "IRS"
+    }
+  ]
+}
