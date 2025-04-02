@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Is This A Scam Number</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<script type="module" src="src/main.ts"></script>
+<body>
+
+<h1>Is This A Scam Number?</h1>
+<p>Enter a phone number to check if it's reported as spam or scam:</p>
+
+<div class="input-group">
+  <input type="text" id="countryCode" value="+1" />
+  <input type="text" id="phoneNumber" placeholder="(555) 123-4567" />
+  <button id="checkNumberBtn">Check</button>
+</div>
+
+<div id="flagDisplay" class="flag-info"></div>
+<div id="loading" style="display: none;">Checking...</div>
+<div id="result" class="result"></div>
+
+<script type="module">
+  import { parsePhoneNumberFromString, AsYouType } from 'https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.18/+esm';
+  import emojiFlags from 'https://cdn.jsdelivr.net/npm/emoji-flags@1.3.0/+esm';
+
+  const phoneInput = document.getElementById('phoneNumber');
+  const countryInput = document.getElementById('countryCode');
+
+  function detectCountryRegionCode(fullNumber) {
+    const phoneNumber = parsePhoneNumberFromString(fullNumber);
+    if (phoneNumber && phoneNumber.isValid()) {
+      return phoneNumber.country;
+    }
+    return null;
+  }
+
+  function showCountryFlag(fullNumber) {
+    const flagDisplay = document.getElementById('flagDisplay');
+    flagDisplay.innerHTML = '';
+
+    const regionCode = detectCountryRegionCode(fullNumber);
+    if (regionCode) {
+      const flagData = emojiFlags.countryCode(regionCode);
+      if (flagData) {
+        flagDisplay.innerHTML = `
+          <span>Country/Region: ${flagData.name}</span>
+          <span class="flag-display">${flagData.emoji}</span>
+        `;
+      }
+    }
+  }
+
+  function formatPhoneNumberInput(fullNumber) {
+    const phoneNumber = parsePhoneNumberFromString(fullNumber);
+    if (phoneNumber && phoneNumber.isValid()) {
+      if (phoneNumber.country === 'US') {
+        return phoneNumber.formatNational(); // (XXX) XXX-XXXX
+      } else {
+        return phoneNumber.formatInternational();
+      }
+    }
+    return fullNumber;
+  }
+
+  function handleUSAutoFormat() {
+    const current = phoneInput.value.replace(/\D/g, '');
+    if (current.length <= 3) {
+      phoneInput.value = `(${current}`;
+    } else if (current.length <= 6) {
+      phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3)}`;
+    } else if (current.length <= 10) {
+      phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3, 6)}-${current.slice(6)}`;
+    } else {
+      phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3, 6)}-${current.slice(6, 10)}`;
+    }
+  }
+
+  phoneInput.addEventListener('input', () => {
+    const full = `${countryInput.value}${phoneInput.value}`;
+    showCountryFlag(full);
+
+    const isUS = detectCountryRegionCode(full) === 'US';
+    if (isUS) {
+      handleUSAutoFormat();
+    }
+  });
+
+  phoneInput.addEventListener('blur', () => {
+    const full = `${countryInput.value}${phoneInput.value}`;
+    const formatted = formatPhoneNumberInput(full);
+    const phoneNumber = parsePhoneNumberFromString(full);
+    if (phoneNumber && phoneNumber.country === 'US') {
+      phoneInput.value = formatted;
+    } else {
+      // Replace entire input with formatted version if not US
+      phoneInput.value = formatted.replace(countryInput.value, '').trim();
+    }
+  });
+
+  countryInput.addEventListener('input', () => {
+    const full = `${countryInput.value}${phoneInput.value}`;
+    showCountryFlag(full);
+  });
+
+  async function checkPhoneNumber() {
+    const full = `${countryInput.value}${phoneInput.value}`;
+    const resultDiv = document.getElementById('result');
+    const loadingDiv = document.getElementById('loading');
+
+    resultDiv.innerHTML = '';
+    if (!phoneInput.value.trim()) {
+      resultDiv.innerHTML = '<p class="error">Please enter a phone number.</p>';
+      return;
+    }
+
+    loadingDiv.style.display = 'block';
+
+    try {
+      const url = `/api/check?phoneNumber=${encodeURIComponent(full)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not OK');
+
+      const data = await response.json();
+      loadingDiv.style.display = 'none';
+
+      if (data.isScam) {
+        resultDiv.innerHTML = `
+          <p><strong>Potential Scam Detected!</strong></p>
+          <p>Details: ${data.details || 'No further info'}</p>
+          <p>Scam Score: ${data.score || 'N/A'}</p>
+        `;
+      } else {
+        resultDiv.innerHTML = `
+          <p>It doesn't appear to be reported as a scam.</p>
+          <p>Scam Score: ${data.score || 'N/A'}</p>
+        `;
+      }
+    } catch (err) {
+      loadingDiv.style.display = 'none';
+      resultDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+    }
+  }
+
+  document.getElementById('checkNumberBtn').addEventListener('click', checkPhoneNumber);
+</script>
+
+</body>
+</html>

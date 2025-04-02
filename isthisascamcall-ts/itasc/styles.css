@@ -1,0 +1,90 @@
+body {
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    background-color: #f7f7f7;
+    color: #333;
+}
+
+h1 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+p {
+    text-align: center;
+    font-size: 1rem;
+}
+
+.input-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+input[type="text"]#countryCode {
+    width: 60px;
+    padding: 0.75rem 0.5rem;
+    font-size: 1.1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px 0 0 8px;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+input[type="text"]#phoneNumber {
+    padding: 0.75rem 1rem;
+    width: 250px;
+    font-size: 1.1rem;
+    border: 1px solid #ccc;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: all 0.2s ease-in-out;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 3px rgba(0,123,255,0.4);
+}
+
+button {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.flag-info {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.flag-display {
+    margin-left: 0.5rem;
+}
+
+.result {
+    margin-top: 2rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.error {
+    color: red;
+}
