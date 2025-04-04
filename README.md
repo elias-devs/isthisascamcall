@@ -4,7 +4,7 @@ A simple web app that helps identify potential scam or spam phone numbers using 
 
 ---
 
-## ✨ Features
+## Features
 
 - Live formatting for US phone numbers
 - Automatic flag and country detection
