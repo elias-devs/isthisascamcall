@@ -2,6 +2,8 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import emojiFlags from 'emoji-flags';
 import usAreaCodes from '../data/usAreaCodes.json';
 
+const typedAreaCodes = usAreaCodes as Record<string, {city: string, state: string}>
+
 
 function detectCountryRegionCode(fullNumber: string): string | null {
     const phoneNumber = parsePhoneNumberFromString(fullNumber);
@@ -99,8 +101,8 @@ function showUSAreaInfo(phoneValue: string) {
     const digits = phoneValue.replace(/\D/g, '');
     const areaCode = digits.slice(0, 3);
 
-    if (areaCode.length === 3 && usAreaCodes[areaCode]) {
-        const { city, state } = usAreaCodes[areaCode];
+    if (areaCode.length === 3 && typedAreaCodes[areaCode]) {
+        const { city, state } = typedAreaCodes[areaCode];
         regionDisplay.textContent = `📍 ${city}, ${state}`;
     } else {
         regionDisplay.textContent = '';
@@ -109,7 +111,7 @@ function showUSAreaInfo(phoneValue: string) {
 
 async function checkPhoneNumber() {
     const phoneInput = document.getElementById('phoneNumber') as HTMLInputElement;
-    const countryInput = document.getElementById('countryCode') as HTMLInputElement;
+    const countryInput = document.getElementById('countryCodeSelect') as HTMLSelectElement;
     const resultDiv = document.getElementById('result');
     const loadingDiv = document.getElementById('loading');
 
@@ -153,7 +155,7 @@ async function checkPhoneNumber() {
 
 window.addEventListener('DOMContentLoaded', () => {
     const phoneInput = document.getElementById('phoneNumber') as HTMLInputElement;
-    const countryInput = document.getElementById('countryCode') as HTMLInputElement;
+    const countryInput = document.getElementById('countryCodeSelect') as HTMLSelectElement;
     const checkBtn = document.getElementById('checkNumberBtn');
 
     if (!phoneInput || !countryInput || !checkBtn) return;
@@ -162,10 +164,6 @@ window.addEventListener('DOMContentLoaded', () => {
     countryInput.value = '+1';
     phoneInput.value = '';
 
-    // Clean input to only allow digits and '+'
-    countryInput.addEventListener('input', () => {
-        countryInput.value = countryInput.value.replace(/[^\d+]/g, '');
-    });
     console.log('Page loaded');
     console.log('Phone input:', phoneInput);
     console.log('Country input:', countryInput);
@@ -173,7 +171,7 @@ window.addEventListener('DOMContentLoaded', () => {
     phoneInput.addEventListener('input', () => {
         const full = `${countryInput.value}${phoneInput.value}`;
         const region = detectCountryRegionCode(full);
-
+        console.log("region: ", region)
         showCountryFlag(full);
 
         if (countryInput.value === '+1') {
@@ -195,7 +193,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    countryInput.addEventListener('input', () => {
+    countryInput.addEventListener('change', () => {
         const full = `${countryInput.value}${phoneInput.value}`;
         showCountryFlag(full);
     });

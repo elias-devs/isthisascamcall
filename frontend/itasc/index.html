@@ -12,7 +12,7 @@
 <p>Enter a phone number to check if it's reported as spam or scam:</p>
 
 <div class="input-group">
-  <input type="text" id="countryCode" value="+1" />
+  <select id="countryCodeSelect"></select>
   <input type="text" id="phoneNumber" placeholder="(555) 123-4567" />
   <button id="checkNumberBtn">Check</button>
 </div>
@@ -27,7 +27,40 @@
   import emojiFlags from 'https://cdn.jsdelivr.net/npm/emoji-flags@1.3.0/+esm';
 
   const phoneInput = document.getElementById('phoneNumber');
-  const countryInput = document.getElementById('countryCode');
+  const countrySelect = document.getElementById('countryCodeSelect');
+  function renderCountryDropDown() {
+    let defaultIndex = 0;
+
+    emojiFlags.data.forEach((flag, index) => {
+      if (flag.dialCode) {
+        const option = document.createElement('option');
+        option.value = flag.code;
+        option.setAttribute('data-dial-code', `${flag.dialCode}`);
+        option.textContent = `${flag.emoji} ${flag.name} (${flag.dialCode})`;
+        countrySelect.appendChild(option);
+
+        if (flag.code === "US") {
+          defaultIndex = index;
+        }
+      }
+    });
+
+    // ✅ Set default after options are appended
+    countrySelect.selectedIndex = defaultIndex;
+
+    // ✅ Optional: trigger flag display and logic immediately
+    const selectedOption = countrySelect.options[defaultIndex];
+    const dialCode = selectedOption.getAttribute('data-dial-code') || '+1';
+    showCountryFlag(dialCode);
+  }
+  renderCountryDropDown(); // don't touch defaultIndex outside
+
+
+  countrySelect.addEventListener('change', () => {
+    const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+    const dialCode = selectedOption.getAttribute('data-dial-code');
+    showCountryFlag(`${dialCode}${phoneInput.value}`);
+  });
 
   function detectCountryRegionCode(fullNumber) {
     const phoneNumber = parsePhoneNumberFromString(fullNumber);
