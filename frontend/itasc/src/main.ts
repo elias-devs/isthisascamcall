@@ -164,12 +164,13 @@ async function checkPhoneNumber() {
 
     try {
         const [data, ok] = await fetchPhoneMetadata(countryInput, phoneInput);
+        loadingDiv.style.display = 'none';
         if (data === undefined) throw new Error('Network response was not OK');
         if (!ok) {
             resultDiv.innerHTML = `<div class="error">${data.error || "Something went wrong."}</div>`;
             return;
         }
-        loadingDiv.style.display = 'none';
+
 
         if (data.error) {
             resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
