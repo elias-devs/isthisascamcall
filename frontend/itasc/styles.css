@@ -95,3 +95,13 @@ button:hover {
 .error {
     color: red;
 }
+
+.styled-select {
+    width: 200px;            /* collapsed width */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+select, option {
+    font-family: system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
