@@ -1,6 +1,7 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import emojiFlags from 'emoji-flags';
 import usAreaCodes from '../data/usAreaCodes.json';
+import {fetchPhoneMetadata} from "./PhoneLookup.ts";
 
 const typedAreaCodes = usAreaCodes as Record<string, {city: string, state: string}>
 
@@ -153,7 +154,6 @@ async function checkPhoneNumber() {
     if (!phoneInput || !countryInput || !resultDiv || !loadingDiv) return;
 
     resultDiv.innerHTML = '';
-    const full = `${countryInput.value}${phoneInput.value}`.trim();
 
     if (!phoneInput.value.trim()) {
         resultDiv.innerHTML = '<p class="error">Please enter a phone number.</p>';
@@ -163,31 +163,45 @@ async function checkPhoneNumber() {
     loadingDiv.style.display = 'block';
 
     try {
-        const url = `/api/check?phoneNumber=${encodeURIComponent(full)}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Network response was not OK');
-
-        const data = await response.json();
-        loadingDiv.style.display = 'none';
-
-        if (data.isScam) {
-            resultDiv.innerHTML = `
-        <p><strong>Potential Scam Detected!</strong></p>
-        <p>Details: ${data.details || 'No further info'}</p>
-        <p>Scam Score: ${data.score || 'N/A'}</p>
-      `;
-        } else {
-            resultDiv.innerHTML = `
-        <p>It doesn't appear to be reported as a scam.</p>
-        <p>Scam Score: ${data.score || 'N/A'}</p>
-      `;
+        const [data, ok] = await fetchPhoneMetadata(countryInput, phoneInput);
+        if (data === undefined) throw new Error('Network response was not OK');
+        if (!ok) {
+            resultDiv.innerHTML = `<div class="error">${data.error || "Something went wrong."}</div>`;
+            return;
         }
-    } catch (err: any) {
-        console.log("Found error in checkPhoneNumber: ", err.message)
         loadingDiv.style.display = 'none';
-        resultDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+
+        if (data.error) {
+            resultDiv.innerHTML = `<div class="error">${data.error}</div>`;
+            return;
+        }
+
+        const output = `
+      <div class="result-card">
+        <h2>Phone Metadata</h2>
+        <ul>
+          <li><strong>Input:</strong> ${data.input}</li>
+          <li><strong>Formatted:</strong> ${data.formatted}</li>
+          <li><strong>Country:</strong> ${data.country} (${data.regionCode})</li>
+          <li><strong>Location:</strong> ${data.location || 'N/A'}</li>
+          <li><strong>Carrier:</strong> ${data.carrier || 'N/A'}</li>
+          <li><strong>Time Zones:</strong> ${Array.isArray(data.timeZones) ? data.timeZones.join(", ") : 'N/A'}</li>
+          <li><strong>Is Valid:</strong> ${data.isValid}</li>
+          <li><strong>Is Possible:</strong> ${data.isPossible}</li>
+          <li><strong>Is Emergency Number:</strong> ${data.isEmergency}</li>
+        </ul>
+      </div>
+    `;
+        resultDiv.innerHTML = output;
+
+    } catch (err: any) {
+        console.log("Found error in checkPhoneNumber: ", err.message);
+        loadingDiv.style.display = 'none';
+        resultDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
     }
 }
+
+
 
 
 
