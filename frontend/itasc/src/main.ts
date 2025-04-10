@@ -35,10 +35,8 @@ function formatPhoneNumberInput(fullNumber: string): string {
     const phoneNumber = parsePhoneNumberFromString(fullNumber);
     if (phoneNumber && phoneNumber.isValid()) {
         if (phoneNumber.country === 'US') {
-            if (phoneNumber.country === 'US') {
-                const n = phoneNumber.nationalNumber;
-                return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
-            }
+            const n = phoneNumber.nationalNumber;
+            return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
         } else {
             return phoneNumber.formatInternational();
         }
@@ -46,24 +44,53 @@ function formatPhoneNumberInput(fullNumber: string): string {
     return fullNumber;
 }
 
-// function handleUSAutoFormat(phoneInput: HTMLInputElement) {
-//     const current = phoneInput.value.replace(/\D/g, '');
-//     if (current.length <= 3) {
-//         phoneInput.value = `(${current}`;
-//     } else if (current.length <= 6) {
-//         phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3)}`;
-//     } else if (current.length <= 10) {
-//         phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3, 6)}-${current.slice(6)}`;
-//     } else {
-//         phoneInput.value = `(${current.slice(0, 3)}) ${current.slice(3, 6)}-${current.slice(6, 10)}`;
-//     }
-// }
+function renderCountryDropDown(countrySelect: HTMLSelectElement) {
+    let defaultIndex = 0;
+
+    emojiFlags.data.forEach((flag, index) => {
+        if (flag.dialCode) {
+            const option = document.createElement('option');
+            option.value = flag.code;
+            option.setAttribute('data-dial-code', `${flag.dialCode}`);
+            // option.label = `${flag.emoji} ${flag.code} (${flag.dialCode})`;
+            option.text = `${flag.emoji} ${flag.name} (${flag.dialCode})`;
+            option.title = `${flag.name} ${flag.code} (${flag.dialCode})`;
+
+            countrySelect.appendChild(option);
+
+            if (flag.code === "US") {
+                defaultIndex = index;
+            }
+        }
+    });
+
+    // Set default after options are appended
+    countrySelect.selectedIndex = defaultIndex;
+    countrySelect.value = "US";
+
+    countrySelect.addEventListener('change', () => {
+        const selected = select.selectedOptions[0];
+        countrySelect.title = selected.textContent || '';
+    });
+
+    const selectedOption = countrySelect.options[defaultIndex];
+    const dialCode = selectedOption.getAttribute('data-dial-code') || '+1';
+    showCountryFlag(dialCode);
+}
+
 
 function handleUSAutoFormat(phoneInput: HTMLInputElement) {
+    // Capture the raw input and cursor position
     const raw = phoneInput.value;
-    const digits = raw.replace(/\D/g, '').slice(0, 10); // Allow max 10 digits
-    const prevCursorPos = phoneInput.selectionStart || 0;
+    const rawCursorPos = phoneInput.selectionStart || 0;
 
+    // Extract digits from the input
+    const digits = raw.replace(/\D/g, '').slice(0, 10);
+
+    // Count how many digits exist before the cursor in the original string
+    const digitsBeforeCursor = raw.slice(0, rawCursorPos).replace(/\D/g, '').length;
+
+    // Format the entire number according to digit count
     let formatted = '';
     if (digits.length === 0) {
         formatted = '';
@@ -75,24 +102,32 @@ function handleUSAutoFormat(phoneInput: HTMLInputElement) {
         formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
     }
 
+    // Set the formatted value in the input
     phoneInput.value = formatted;
 
-    // Try to preserve cursor position reasonably
-    let nextCursorPos = formatted.length;
-
-    if (raw.length > formatted.length) {
-        // User hit backspace
-        nextCursorPos = prevCursorPos - 1;
-    } else if (raw.length < formatted.length) {
-        // New formatting characters added
-        nextCursorPos = prevCursorPos + (formatted.length - raw.length);
+    // Calculate the new cursor position: advance through the formatted string
+    // until we've passed the same number of digits as before the cursor.
+    let newCursorPos = 0;
+    let digitCount = 0;
+    for (let i = 0; i < formatted.length; i++) {
+        if (/\d/.test(formatted[i])) {
+            digitCount++;
+        }
+        if (digitCount >= digitsBeforeCursor) {
+            newCursorPos = i + 1;
+            break;
+        }
     }
 
-    // Set new cursor position
+    // Fallback: if no digits found, place cursor at the end
+    if (newCursorPos === 0) newCursorPos = formatted.length;
+
+    // Update the cursor position asynchronously
     setTimeout(() => {
-        phoneInput.setSelectionRange(nextCursorPos, nextCursorPos);
+        phoneInput.setSelectionRange(newCursorPos, newCursorPos);
     }, 0);
 }
+
 
 function showUSAreaInfo(phoneValue: string) {
     const regionDisplay = document.getElementById('regionDisplay');
@@ -148,10 +183,13 @@ async function checkPhoneNumber() {
       `;
         }
     } catch (err: any) {
+        console.log("Found error in checkPhoneNumber: ", err.message)
         loadingDiv.style.display = 'none';
         resultDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
     }
 }
+
+
 
 window.addEventListener('DOMContentLoaded', () => {
     const phoneInput = document.getElementById('phoneNumber') as HTMLInputElement;
@@ -161,9 +199,9 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!phoneInput || !countryInput || !checkBtn) return;
 
     // Reset default values
-    countryInput.value = '+1';
+    countryInput.value = 'US';
     phoneInput.value = '';
-
+    renderCountryDropDown(countryInput); // don't touch defaultIndex outside
     console.log('Page loaded');
     console.log('Phone input:', phoneInput);
     console.log('Country input:', countryInput);
@@ -174,7 +212,7 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log("region: ", region)
         showCountryFlag(full);
 
-        if (countryInput.value === '+1') {
+        if (countryInput.value === 'US') {
             handleUSAutoFormat(phoneInput);
             showUSAreaInfo(phoneInput.value)
         }
@@ -192,11 +230,5 @@ window.addEventListener('DOMContentLoaded', () => {
             phoneInput.value = formatted.replace(countryInput.value, '').trim();
         }
     });
-
-    countryInput.addEventListener('change', () => {
-        const full = `${countryInput.value}${phoneInput.value}`;
-        showCountryFlag(full);
-    });
-
     checkBtn.addEventListener('click', checkPhoneNumber);
 });
