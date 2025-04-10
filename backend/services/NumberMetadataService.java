@@ -29,7 +29,7 @@ public class NumberMetadataService {
     private static final PhoneNumberToCarrierMapper carrierMapper = PhoneNumberToCarrierMapper.getInstance();
     private static final PhoneNumberToTimeZonesMapper timeZoneMapper = PhoneNumberToTimeZonesMapper.getInstance();
 
-    private static final int CACHE_SIZE = 500;
+    private static final int CACHE_SIZE = 1000;
     private static final Map<String, JSONObject> cache = Collections.synchronizedMap(
             new LinkedHashMap<String, JSONObject>(CACHE_SIZE, 0.75f, true) {
                 @Override
@@ -47,20 +47,32 @@ public class NumberMetadataService {
             if (!logDir.exists()) {
                 logDir.mkdir();
             }
-            FileHandler fh = new FileHandler("log/number_metadata_service.log", true);
-            fh.setFormatter(new SimpleFormatter());
-            logger.addHandler(fh);
-            logger.setUseParentHandlers(false);
+
+            FileHandler fileHandler = new FileHandler("log/number_metadata_service.log", true);
+            fileHandler.setFormatter(new SimpleFormatter());
+            logger.addHandler(fileHandler);
         } catch (IOException e) {
-            System.err.println("Failed to initialize log handler: " + e.getMessage());
+            System.err.println("Failed to initialize file logger: " + e.getMessage());
         }
     }
 
+
     public static void main(String[] args) throws IOException {
+        if (Arrays.asList(args).contains("-p")) {
+            ConsoleHandler consoleHandler = new ConsoleHandler();
+            consoleHandler.setFormatter(new SimpleFormatter());
+            logger.addHandler(consoleHandler);
+            logger.setUseParentHandlers(false);
+            System.out.println("Console logging enabled.");
+        } else {
+            System.out.println("Console logging is disabled. Logs will be written to file only.");
+            logger.setUseParentHandlers(false);
+        }
+
         HttpServer server = HttpServer.create(new InetSocketAddress(8181), 0);
         server.createContext("/lookup", NumberMetadataService::handleLookup);
         server.setExecutor(null);
-        System.out.println("Number Metadata Service running on http://localhost:8080/lookup");
+        System.out.println("Number Metadata Service running on http://localhost:8181/lookup");
         server.start();
     }
 
@@ -78,7 +90,7 @@ public class NumberMetadataService {
             return;
         }
 
-        if (!number.matches("^\\+\\d{1,20}$")) {
+        if (!number.matches("^\\+\\d{5,20}$")) {
             responseJson.put("error", "Invalid phone number format.");
             logger.warning("Rejected: Invalid format for number: " + number);
             sendResponse(exchange, 400, responseJson.toString());
@@ -96,13 +108,19 @@ public class NumberMetadataService {
             boolean isValid = phoneUtil.isValidNumber(parsedNumber);
             boolean isPossible = phoneUtil.isPossibleNumber(parsedNumber);
             String regionCode = phoneUtil.getRegionCodeForNumber(parsedNumber);
+            if (regionCode == null) {
+                logger.warning("Received empty regionCode: " + parsedNumber);
+                responseJson.put("error", "Invalid phone number, missing region code: " + parsedNumber);
+                sendResponse(exchange, 400, responseJson.toString());
+                return;
+            }
+
             String formatted = phoneUtil.format(parsedNumber, PhoneNumberFormat.NATIONAL);
 
             String location = geocoder.getDescriptionForNumber(parsedNumber, Locale.ENGLISH);
             String carrier = carrierMapper.getNameForNumber(parsedNumber, Locale.ENGLISH);
             PhoneNumberType numberType = phoneUtil.getNumberType(parsedNumber);
             List<String> timeZones = timeZoneMapper.getTimeZonesForNumber(parsedNumber);
-//            PhoneNumberUtil.PhoneNumberCost cost = phoneUtil.getExpectedCost(parsedNumber);
             boolean isValidForRegion = regionCode != null && phoneUtil.isValidNumberForRegion(parsedNumber, regionCode);
             boolean isEmergency = ShortNumberInfo.getInstance().isEmergencyNumber(number, regionCode);
             Locale locale = new Locale.Builder().setRegion(regionCode).build();
@@ -118,7 +136,6 @@ public class NumberMetadataService {
             responseJson.put("timeZones", timeZones);
             responseJson.put("isValid", isValid);
             responseJson.put("isPossible", isPossible);
-//            responseJson.put("costType", cost.toString());
             responseJson.put("isEmergency", isEmergency);
             responseJson.put("isValidForRegion", isValidForRegion);
 
@@ -140,10 +157,12 @@ public class NumberMetadataService {
     }
 
     private static void sendResponse(HttpExchange exchange, int statusCode, String responseBody) throws IOException {
+        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*"); // Allow all origins for development
         exchange.getResponseHeaders().add("Content-Type", "application/json");
-        exchange.sendResponseHeaders(statusCode, responseBody.getBytes().length);
+        byte[] responseBytes = responseBody.getBytes("UTF-8");
+        exchange.sendResponseHeaders(statusCode, responseBytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
-            os.write(responseBody.getBytes());
+            os.write(responseBytes);
         }
     }
 }
