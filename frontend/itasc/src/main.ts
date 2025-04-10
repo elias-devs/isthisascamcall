@@ -221,6 +221,13 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('Phone input:', phoneInput);
     console.log('Country input:', countryInput);
     console.log(`Country input value: \"${countryInput.value}\"`)
+    phoneInput.addEventListener('beforeinput', (e: InputEvent) => {
+        const countryCode = countryInput.value;
+        const currentDigits = phoneInput.value.replace(/\D/g, "");
+        if (countryCode === "US" && currentDigits.length >= 10 && e.inputType.startsWith("insert")) {
+            e.preventDefault();
+        }
+    });
     phoneInput.addEventListener('input', () => {
         const full = `${countryInput.value}${phoneInput.value}`;
         const region = detectCountryRegionCode(full);
