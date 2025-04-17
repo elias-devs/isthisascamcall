@@ -214,7 +214,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!phoneInput || !countryInput || !checkBtn) return;
 
     // Reset default values
-    countryInput.value = 'US';
     phoneInput.value = '';
     renderCountryDropDown(countryInput); // don't touch defaultIndex outside
     console.log('Page loaded');
@@ -224,7 +223,8 @@ window.addEventListener('DOMContentLoaded', () => {
     phoneInput.addEventListener('beforeinput', (e: InputEvent) => {
         const countryCode = countryInput.value;
         const currentDigits = phoneInput.value.replace(/\D/g, "");
-        if (countryCode === "US" && currentDigits.length >= 10 && e.inputType.startsWith("insert")) {
+        if (countryCode === "US" && currentDigits.length >= 10 && e.inputType.startsWith("insert")
+            && !phoneInput.selectionStart && !phoneInput.selectionEnd) {
             e.preventDefault();
         }
     });
