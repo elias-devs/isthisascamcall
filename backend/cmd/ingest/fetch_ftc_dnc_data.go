@@ -1,20 +1,20 @@
 package main
 
 import (
-    "log"
+	"log"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 )
 
 // === Config ===
-initFtcApi()
 const FTC_ENDPOINT = "https://api.ftc.gov/v0/dnc-complaints"
-
+var FTC_API_KEY string
 const PAGE_LIMIT = 50
 
 // === FTC Response Types ===
@@ -175,9 +175,15 @@ func normalize(record FTCRecord) (PhoneReport, error) {
 	}, nil
 }
 
-func initFtcApi() {
+func init() {
+    out, err := exec.Command("bash", "-c", "echo $FTC_API_KEY").Output()
+    fmt.Println("DEBUG: ftc key = ", string(out))
+    fmt.Println("DEBUG: error = ", err)
     FTC_API_KEY = os.Getenv("FTC_API_KEY")
     if FTC_API_KEY == "" {
-        log.Fatal("Missing FTC_API_KEY")
-    }
+ 		fmt.Println("DEBUG: FTC_API_KEY is not visible at runtime")
+		log.Fatal("Missing FTC_API_KEY")
+	} else {
+		fmt.Println("DEBUG: FTC_API_KEY available", FTC_API_KEY[:5], "...")
+	}	
 }
