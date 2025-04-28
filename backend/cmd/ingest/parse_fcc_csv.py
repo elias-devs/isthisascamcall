@@ -118,7 +118,6 @@ def parse_fcc_csv(csv_file_path: str) -> List[PhoneReport]:
                 report_method=method or None,
                 type_of_call=reason or None,
                 subject=subject or None,
-                consumer_number=cons_num,
                 consumer_city=None,  # FCC file does not have city — just state/zip
                 consumer_state=state,
                 consumer_zip=zipcode,
