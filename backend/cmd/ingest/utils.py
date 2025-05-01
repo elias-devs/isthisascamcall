@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from dataclasses import dataclass, field
@@ -15,8 +15,8 @@ class PhoneNumber:
     country_code: Optional[str] = None
     first_seen_at: Optional[datetime] = None
     last_reported_at: Optional[datetime] = None
-    report_count: int = 0
-    scam_score: float = 0.0
+    report_count: Optional[int] = 0
+    scam_score: Optional[float] = 0.0
 
 
 # === phone_reports table ===
@@ -41,7 +41,7 @@ class PhoneReport:
 
     source_seq_id: Optional[str] = None
     notes: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=datetime.now(tz=timezone.utc))
 
     secret_key: Optional[str] = None
 
