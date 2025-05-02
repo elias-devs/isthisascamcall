@@ -30,7 +30,7 @@ def debug(msg):
 
 
 def convert_date_time_to_dt(date_val: str, time_val: str) -> datetime | None:
-    if any(not isinstance(str, val) or not val for val in [date_val, time_val]):
+    if any(not isinstance(val, str) or not val for val in [date_val, time_val]):
         print(f"Bad date/time val(s): {date_val} {time_val}")
         return None
     normalized_time = time_val.replace(".", "").upper()

@@ -41,7 +41,7 @@ class PhoneReport:
 
     source_seq_id: Optional[str] = None
     notes: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.now(tz=timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     secret_key: Optional[str] = None
 
