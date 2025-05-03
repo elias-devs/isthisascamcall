@@ -31,9 +31,9 @@ def debug(msg):
 
 def convert_date_time_to_dt(date_val: str, time_val: str) -> datetime | None:
     if any(not isinstance(val, str) or not val for val in [date_val, time_val]):
-        print(f"Bad date/time val(s): {date_val} {time_val}")
+        debug(f"Bad date/time val(s): {date_val} {time_val}")
         return None
-    normalized_time = time_val.replace(".", "").upper()
+    normalized_time = time_val.replace(".", "").replace(",","").upper()
     dt_str = f"{date_val} {normalized_time}"
     try:
         return datetime.strptime(dt_str, "%m/%d/%Y %I:%M %p").replace(tzinfo=timezone.utc)
@@ -52,13 +52,13 @@ def get_row_value(raw_value, column):
 
     if column in ["Caller ID Number", "Advertiser Business Number"]:
         try:
-            return phonenumbers.parse(raw_value, "US")
+            return phonenumbers.parse(raw_value, "US") if raw_value else None
         except Exception as er:
             print(f"Unable to parse #: {raw_value}: {er}")
             return ""
     elif column == "Location (Center point of the Zip Code)":
         try:
-            return tuple(map(float, re.sub(r"[^\d\s-]", "", raw_value).split()))
+            return tuple(map(float, re.sub(r"[^\d\s-]", "", raw_value).split())) if raw_value else None, None
         except Exception:
             print(f"Unable to parse location : {raw_value}")
             return None, None
@@ -66,11 +66,13 @@ def get_row_value(raw_value, column):
         try:
             return raw_value.strip()
         except Exception:
-            print(f"Unable to parse {column}: {raw_value}")
+            if raw_value:
+                print(f"Unable to parse {column}: {raw_value}")
             return None
     elif column == "State":
         if not (raw_value.isupper() and len(raw_value.strip()) == 2):
-            print(f"Unrecognized state format: {raw_value}")
+            if raw_value:
+                print(f"Unrecognized state format: {raw_value}")
             return None
         return raw_value.strip()
     elif column == "Zip":
@@ -93,6 +95,8 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
         skipinitialspace=True,
         header=0
     )
+    df = df.fillna("")
+    
     print("Read .csv, parsing...")
     df = df.rename(columns={
         "Ticket ID": "Ticket_ID",
@@ -109,12 +113,17 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
         if not phone_number:
             continue    # skip rows with no phone #
         phone_number_str = f"+{phone_number.country_code}{phone_number.national_number}"
-
-        latitude, longitude = get_row_value(
-            row.get("Location_Center_Zip"),
-            "Location (Center point of the Zip Code)"
-        )
-
+        try:
+            latitude, longitude = get_row_value(
+                row.get("Location_Center_Zip"),
+                "Location (Center point of the Zip Code)"
+            )
+        except Exception:
+            print(f"Failed to parse long/latitude: {row}")
+            latitude, longitude = None, None
+        else:
+            if latitude and not longitude:
+                import pdb;pdb.set_trace()
         # Parse Date of Issue
         report_date = convert_date_time_to_dt(
             row.get("Date_of_Issue"), row.get("Time_of_Issue")
@@ -124,7 +133,7 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
         subject = get_row_value(row.get("Issue"), "Issue")
         state = get_row_value(row.get("State"), "State")
         zipcode = get_row_value(row.get("Zip"), "Zip")
-        ticket_id = get_row_value(row.get("Ticket_ID"), "Ticket_ID")
+        ticket_id = get_row_value(str(row.get("Ticket_ID")), "Ticket_ID")
 
         if ticket_id not in seen_reports:
             seen_reports.add(ticket_id)
@@ -135,7 +144,8 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
                 print(f"Error: Bad data, skipping this row...")
             continue
         try:
-            # Build the PhoneReport
+            #import pdb;pdb.set_trace()
+	    # Build the PhoneReport
             report = PhoneReport(
                 phone_number=phone_number_str,
                 source="FCC",
@@ -216,7 +226,7 @@ if __name__ == '__main__':
     argp.add_argument(
         "--env",
         dest="env",
-        default="/path/to/postgredb.env",
+        default="./data/db.env",
         help="Mandatory, if uploading to postgre"
     )
     argp.add_argument(
@@ -248,8 +258,8 @@ if __name__ == '__main__':
         raise FileNotFoundError("A path to a .env with database information is needed to push to the DB.")
 
     phone_reports, phone_numbers = parse_fcc_csv(args.csv)
-
-    print(f"Found {len(phone_reports)} reports for {len(phone_numbers)}")
+    
+    print(f"Found {len(phone_reports)} reports for {len(phone_numbers)} unique numbers.")
 
     if args.confirm:
         input("Press enter to push database now...")
