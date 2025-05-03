@@ -58,7 +58,7 @@ def get_row_value(raw_value, column):
             return ""
     elif column == "Location (Center point of the Zip Code)":
         try:
-            return tuple(map(float, re.sub(r"[^\d\s-]", "", raw_value).split())) if raw_value else None, None
+            return tuple(map(float, re.sub(r"[^\d\s-]", "", raw_value).split())) if raw_value else (None, None)
         except Exception:
             print(f"Unable to parse location : {raw_value}")
             return None, None
@@ -123,7 +123,7 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
             latitude, longitude = None, None
         else:
             if latitude and not longitude:
-                import pdb;pdb.set_trace()
+                print("Weird stuff")
         # Parse Date of Issue
         report_date = convert_date_time_to_dt(
             row.get("Date_of_Issue"), row.get("Time_of_Issue")
@@ -144,8 +144,7 @@ def parse_fcc_csv(csv_file_path: str) -> tuple[list[PhoneReport], List[PhoneNumb
                 print(f"Error: Bad data, skipping this row...")
             continue
         try:
-            #import pdb;pdb.set_trace()
-	    # Build the PhoneReport
+            # Build the PhoneReport
             report = PhoneReport(
                 phone_number=phone_number_str,
                 source="FCC",
