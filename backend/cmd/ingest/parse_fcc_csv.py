@@ -30,16 +30,46 @@ def debug(msg):
 
 
 def convert_date_time_to_dt(date_val: str, time_val: str) -> datetime | None:
-    if any(not isinstance(val, str) or not val for val in [date_val, time_val]):
-        debug(f"Bad date/time val(s): {date_val} {time_val}")
+    if not isinstance(date_val, str) or not date_val.strip():   # no date given
+        debug(f"Bad date value: {date_val}")
         return None
-    normalized_time = time_val.replace(".", "").replace(",","").upper()
-    dt_str = f"{date_val} {normalized_time}"
+
+    # Accepts formats like MM/DD/YYYY, MM-DD-YYYY, MM.DD.YYYY
+    mdy_date_regex = r"^\d{2}[-/.]\d{2}[-/.]\d{4}$"
+    if not re.match(mdy_date_regex, date_val):
+        debug(f"Unrecognized date format: {date_val}")
+        return None
+
+    date_str = date_val.replace(".", "/").replace("-", "/")
     try:
-        return datetime.strptime(dt_str, "%m/%d/%Y %I:%M %p").replace(tzinfo=timezone.utc)
-    except Exception:
-        print(f'Unable to parse datetime: {dt_str} ({date_val}, {time_val})')
+        report_date = datetime.strptime(date_str, "%m/%d/%Y")
+    except Exception as e:
+        debug(f"Date parsing failed: {date_val}")
         return None
+
+    if not isinstance(time_val, str) or not time_val.strip():
+        return report_date
+
+    time_val = time_val.strip().lower()
+
+    am_regex = r"^\d{1,2}:\d{2}\s*a"
+    pm_regex = r"^\d{1,2}:\d{2}\s*p"
+
+    if re.match(am_regex, time_val):
+        time_part = re.split(r"a", time_val)[0].strip()
+        time_str = f"{date_str} {time_part} AM"
+    elif re.match(pm_regex, time_val):
+        time_part = re.split(r"p", time_val)[0].strip()
+        time_str = f"{date_str} {time_part} PM"
+    else:
+        debug(f"Unrecognized time format: {time_val}")
+        return report_date  # fall back to date only
+
+    try:
+        return datetime.strptime(time_str, "%m/%d/%Y %I:%M %p")
+    except Exception as e:
+        debug(f"Failed to parse datetime: {time_str}")
+        return report_date
 
 
 def get_row_value(raw_value, column):
